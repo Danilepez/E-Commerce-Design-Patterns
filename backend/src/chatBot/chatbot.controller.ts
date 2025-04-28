@@ -6,9 +6,15 @@ import { ChatBotService } from './chatbot.service';
 export class ChatBotController {
   constructor(private readonly chatBotService: ChatBotService) {}
 
-  @Post("ask") 
-  async askAI(@Body() body: { messages: string}) {
-    const response = await this.chatBotService.getAIResponse(body.messages);
-    return { text: response }; 
+  @Post('ask')
+  async askAI(@Body() body: { messages: Array<{ role: string; content: string }> }) {
+    const text = await this.chatBotService.getAIResponse(body.messages);
+    return { text };
+  }
+
+  @Post('extract-category')
+  async extractCategory(@Body() body: { message: string }) {
+    const category = await this.chatBotService.extractCategory(body.message);
+    return { category };
   }
 }

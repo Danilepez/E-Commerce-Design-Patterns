@@ -13,7 +13,7 @@ import { PaymentModule } from './payment/payment.module';
       isGlobal: true,
     }),
     MongooseModule.forRoot(
-      `mongodb+srv://${process.env.MONGOUSER}:${process.env.MONGOPASS}@ecommerce.atu6c.mongodb.net/?retryWrites=true&w=majority&appName=ecommerce`,
+      `mongodb+srv://${process.env.MONGOUSER}:${process.env.MONGOPASS}@eccomerce-cluster.oambf.mongodb.net/ecommercedb?retryWrites=true&w=majority&appName=Eccomerce-cluster`,
     ),
     ProductModule,
     ChatBotModule,

@@ -11,102 +11,113 @@ import {
   ConversationHeader,
   Avatar,
 } from "@chatscope/chat-ui-kit-react";
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useNavigate } from "react-router";
-import { MessageCircle } from "lucide-react"; // Importa el icono
-
-import { promptTexto } from "@/prompts/prompt";
+import { MessageCircle } from "lucide-react";
 
 const ChatBot = () => {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const CHATBOT_PROMPT = promptTexto;
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+  const validCategories = [
+    'Tecnologia', 'Peluches', 'Accesorios', 'Libros', 'Deporte',
+    'Tazas', 'Ropa', 'Salud', 'Electronica', 'Hogar', 'Juguetes',
+    'Decoracion', 'Juegosmesa', 'Moda', 'Cocina', 'Coleccionables',
+    'Herramientas', 'Instrumentos', 'Musica', 'Electrodomesticos',
+    'Videojuegos', 'Merchandising', 'Entretenimiento', 'Calzadodeportivo',
+    'Ropadeportiva', 'Bebidas'
+  ];
   
-  const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_GEMINI_API_KEY!);
-  const model = genAI?.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
-  const extractCategoryFromMessage = async (message: string): Promise<string | null> => {
-    const extractionPrompt = `Extrae solo la palabra que representa la categoría de producto del siguiente mensaje. Si no encuentras ninguna, responde "none". Mensaje: "${message}"`;
-
+  // Modifica la función extractCategoryFromMessage
+  const extractCategoryFromMessage = async (message: string) => {
     try {
-      const extractionResult = await model?.generateContent(extractionPrompt);
-      const category = await extractionResult?.response.text();
-
-      return category?.trim() || null;
+      const response = await fetch(`${API_URL}/chatbot/extract-category`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+  
+      if (!response.ok) throw new Error('Error en la respuesta del servidor');
+      
+      const data = await response.json();
+      
+      // Convertir a formato con primera letra mayúscula
+      const formattedCategory = data.category 
+        ? data.category
+            .toLowerCase()
+            .split('&')
+            .map((cat: string) => cat.charAt(0).toUpperCase() + cat.slice(1))
+            .join('&')
+        : null;
+  
+      if (formattedCategory && validCategories.some(c => formattedCategory.includes(c))) {
+        navigate(`/category`, { 
+          state: { 
+            category: formattedCategory,
+            timestamp: Date.now()
+          }
+        });
+        return true;
+      }
+      
+      return false;
     } catch (error) {
-      console.error("Error extrayendo la categoría", error);
-
-      return null;
+      console.error("Error:", error);
+      return false;
     }
   };
 
   const handleSend = async (messageText: string) => {
-    setMessages((prev) => [...prev, { role: "user", content: messageText }]);
-    setMessages((prev) => [...prev, { role: "model", content: "Escribiendo..." }]);
+    const categoryDetected = await extractCategoryFromMessage(messageText);
+    if (categoryDetected) return;
+
+    const newMessages = [...messages, { role: "user", content: messageText }];
+    setMessages(newMessages);
+    setMessages(prev => [...prev, { role: "model", content: "Escribiendo..." }]);
     setIsLoading(true);
 
-    const extractedCategory = await extractCategoryFromMessage(messageText);
-
-    if (extractedCategory && extractedCategory.toLowerCase() !== "none") {
-      navigate("/category", { state: { category: extractedCategory } });
-    }
-
-    let inputMessage = messages.length === 0
-      ? `${CHATBOT_PROMPT}\nUsuario: ${messageText}`
-      : `Usuario: ${messageText}`;
-
     try {
-      const result = await model?.generateContent(inputMessage);
-      const response = await result.response;
+      const response = await fetch(`${API_URL}/chatbot/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newMessages }),
+      });
 
-      setMessages((prev) => {
-        const newMessages = [...prev];
-
-        if (newMessages[newMessages.length - 1].content === "Escribiendo...") {
-          newMessages.pop();
-        }
-
-        return [...newMessages, { role: "model", content: response.text() }];
+      if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+      
+      const data = await response.json();
+      
+      setMessages(prev => {
+        const filtered = prev.filter(msg => msg.content !== "Escribiendo...");
+        return [...filtered, { role: "model", content: data.text }];
       });
     } catch (error) {
-      console.error("Error con Gemini API", error);
-      setMessages((prev) => {
-        const newMessages = [...prev];
-
-        if (newMessages[newMessages.length - 1].content === "Escribiendo...") {
-          newMessages.pop();
-        }
-
-        return [...newMessages, { role: "model", content: "Error al obtener respuesta del bot." }];
+      console.error("Error:", error);
+      setMessages(prev => {
+        const filtered = prev.filter(msg => msg.content !== "Escribiendo...");
+        return [...filtered, { role: "model", content: "Error al obtener respuesta" }];
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleReset = () => {
-    setMessages([]);
-  };
+  const handleReset = () => setMessages([]);
 
-  // Nueva función para manejar la apertura del chat y enviar mensaje de bienvenida
   const handleOpenChat = () => {
-    setIsOpen((prev) => {
-      if (!prev && messages.length === 0) {
-        // Si el chat se abre por primera vez, agregar mensaje de bienvenida
-        setMessages([
-          { role: "model", content: "¡Hola! Soy tu asistente de compras. ¿En qué puedo ayudarte hoy?" }
-        ]);
-      }
-
-      return !prev;
-    });
+    setIsOpen(!isOpen);
+    if (!isOpen && messages.length === 0) {
+      setMessages([{ 
+        role: "model", 
+        content: "¡Hola! Soy tu asistente de compras. ¿En qué puedo ayudarte hoy?" 
+      }]);
+    }
   };
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
-      {/* Botón flotante con icono de mensaje */}
       <button
         className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition duration-300 ease-in-out"
         onClick={handleOpenChat}
@@ -129,7 +140,7 @@ const ChatBot = () => {
                     key={index}
                     model={{
                       message: msg.content,
-                      sender: msg.role === "user" ? "Usuario" : "Asistente E-commerce",
+                      sender: msg.role === "user" ? "Usuario" : "Asistente",
                       direction: msg.role === "user" ? "outgoing" : "incoming",
                       position: "single",
                     }}
