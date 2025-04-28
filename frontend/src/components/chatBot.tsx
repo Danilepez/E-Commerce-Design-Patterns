@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@heroui/react";
 import "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
 import {

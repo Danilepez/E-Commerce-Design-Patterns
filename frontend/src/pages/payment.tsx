@@ -38,13 +38,13 @@ const VerifyPurchasePage = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const { buyNow, clearBuyNow } = useBuyNow();
+  const { buyNow } = useBuyNow();
   const { products: cartProducts } = useCart();
   const [products, setProducts] = useState<PurchaseProduct[]>([]);
   const addressData = JSON.parse(localStorage.getItem("addressData") || "{}");
   const [showCheck, setShowCheck] = useState(false);
   const [method, seteMethod] = useState("card");
-  const [response, setResponse] = useState<any>(null);
+  const [, setResponse] = useState<any>(null);
   const {isOpen, onOpen, onClose} = useDisclosure();
 
   const handleOpen = (m: string) => {

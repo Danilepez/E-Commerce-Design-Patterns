@@ -19,7 +19,7 @@ const AddressPage = () => {
     { cca3: string; name: { common: string } }[]
   >([]);
   const [selectedCountry, setSelectedCountry] = useState<string>("");
-  const [submitted, setSubmitted] = useState<{
+  const [, setSubmitted] = useState<{
     [k: string]: FormDataEntryValue;
   } | null>(null);
   const [rememberAddress, setRememberAddress] = useState(false);

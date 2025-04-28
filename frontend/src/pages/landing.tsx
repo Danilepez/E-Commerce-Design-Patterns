@@ -14,7 +14,6 @@ import { useEffect, useState } from "react";
 
 import DefaultLayout from "@/layouts/default";
 import { Product } from "@/interface/product";
-import ChatBot from "@/components/chatBot";
 
 const recyclers = [
   {
